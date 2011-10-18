@@ -1,0 +1,8 @@
+{
+   "shell-version": ["3.2.0"],
+   "uuid": "gnotesearch@tuxfoo.org",
+   "name": "Gnote Search Provider",
+   "description": "Provide Gnote search results in overview",
+   "url": "http://live.gnome.org/Gnote",
+   "original-authors": "Casey Harkins"
+}
