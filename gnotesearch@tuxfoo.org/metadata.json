@@ -3,6 +3,6 @@
    "uuid": "gnotesearch@tuxfoo.org",
    "name": "Gnote Search Provider",
    "description": "Provide Gnote search results in overview",
-   "url": "http://live.gnome.org/Gnote",
+   "url": "https://github.com/charkins/gnome-shell-extension-gnotesearch",
    "original-authors": "Casey Harkins"
 }
