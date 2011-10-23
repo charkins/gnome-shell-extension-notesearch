@@ -1,0 +1,13 @@
+<schemalist gettext-domain="gnome-shell-extension-notesearch">
+  <enum id="com.github.charkins.notesearch.app">
+    <value nick="Gnote" value="0" />
+    <value nick="Tomboy" value="1" />
+  </enum>
+  <schema id="com.github.charkins.notesearch" path="/com/github/charkins/notesearch/">
+    <key name="app" enum="com.github.charkins.notesearch.app">
+      <default>'Gnote'</default>
+      <_summary>Note application</_summary>
+      <_description>Choose the note application to search. Allowed values are 'Gnote' or 'Tomboy'.</_description>
+    </key>
+  </schema>
+</schemalist>
