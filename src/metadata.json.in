@@ -1,8 +1,8 @@
 {
    "shell-version": ["3.2"],
-   "uuid": "notesearch@tuxfoo.org",
+   "uuid": "@uuid@",
    "name": "Notes Search Provider for Gnote/Tomboy",
    "description": "Provide Gnote/Tomboy search results in overview",
-   "url": "https://github.com/charkins/gnome-shell-extension-notesearch",
+   "url": "@url@",
    "original-authors": "Casey Harkins"
 }
