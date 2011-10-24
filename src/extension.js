@@ -21,12 +21,19 @@
 const Main = imports.ui.main;
 const DBus = imports.dbus;
 const Lang = imports.lang;
-const Gettext = imports.gettext.domain('gnome-shell');
 const St = imports.gi.St;
 const Gio = imports.gi.Gio;
 const Mainloop = imports.mainloop;
-const _ = Gettext.gettext;
 const Search = imports.ui.search;
+const Gettext = imports.gettext.domain('gnome-shell-extension-notesearch');
+const _ = Gettext.gettext;
+
+const NOTESEARCH_SETTINGS_SCHEMA = 'com.github.charkins.notesearch';
+const NOTESEARCH_APP_KEY = 'app';
+const NoteSearchApp = {
+    GNOTE: 0,
+    TOMBOY: 1
+}
 
 const GnoteRemoteControl = {
     name: 'org.gnome.Gnote.RemoteControl',
@@ -47,26 +54,65 @@ const GnoteRemoteControl = {
     ]
 };
 
-/* gnoteSearchProvider holds the instance of the search provider
+const TomboyRemoteControl = {
+    name: 'org.gnome.Tomboy.RemoteControl',
+    methods: [
+        {
+            name: 'DisplayNoteWithSearch',
+            inSignature: 'ss',
+            outSignature: 'b'
+        },{
+            name: 'SearchNotes',
+            inSignature: 'sb',
+            outSignature: 'as'
+        },{
+            name: 'GetNoteTitle',
+            inSignature: 's',
+            outSignature: 'a'
+        }
+    ]
+};
+
+/* noteSearchProvider holds the instance of the search provider
  * implementation. If null, the extension is either uninitialized
  * or has been disabled via disable().
  */
-var gnoteSearchProvider = null;
+var noteSearchProvider = null;
 
+function getSettings(schema) {
+    if (Gio.Settings.list_schemas().indexOf(schema) == -1)
+        throw _("Schema \"%s\" not found.").format(schema);
+    return new Gio.Settings({ schema: schema });
+}
 
-function GnoteSearchProvider() {
+function NoteSearchProvider() {
     this._init();
 }
 
-GnoteSearchProvider.prototype = {
+NoteSearchProvider.prototype = {
     __proto__: Search.SearchProvider.prototype,
 
     _init: function(name) {
         Search.SearchProvider.prototype._init.call(this, _("NOTES"));
-        this._GnoteProxy = DBus.makeProxyClass(GnoteRemoteControl);
-        this._gnote = new this._GnoteProxy(DBus.session,
-            'org.gnome.Gnote',
-            '/org/gnome/Gnote/RemoteControl');
+        this._settings = getSettings(NOTESEARCH_SETTINGS_SCHEMA);
+        let notesearch_app_changed = Lang.bind(this, function() {
+            this._noteApp = this._settings.get_enum(NOTESEARCH_APP_KEY);
+            if (this._noteApp == NoteSearchApp.TOMBOY) {
+                this._noteProxy = DBus.makeProxyClass(TomboyRemoteControl);
+                this._noteControl = new this._noteProxy(DBus.session,
+                    'org.gnome.Tomboy',
+                    '/org/gnome/Tomboy/RemoteControl');
+            } else {
+                this._noteProxy = DBus.makeProxyClass(GnoteRemoteControl);
+                this._noteControl = new this._noteProxy(DBus.session,
+                    'org.gnome.Gnote',
+                    '/org/gnome/Gnote/RemoteControl');
+            }
+        });
+
+        notesearch_app_changed();
+
+        this._settings.connect('changed::' + NOTESEARCH_APP_KEY, notesearch_app_changed);
 
         this._id = 0;
     },
@@ -74,23 +120,35 @@ GnoteSearchProvider.prototype = {
     /* get the title and icon for a search result */
     getResultMeta: function(resultId) {
         let title = resultId.title;
-        if(!title) title = 'Gnote Note';
-        
-        return { 'id': resultId,
-                 'name': title,
-                 'createIcon': function(size) {
-                    let xicon = new Gio.ThemedIcon({name: 'gnote'});
-                    return new St.Icon({icon_size: size,
-                                        gicon: xicon});
-                 }
+        if(!title) title = 'Note';
 
-               };
+        if (this._noteApp == NoteSearchApp.TOMBOY) {
+            return { 'id': resultId,
+                     'name': title,
+                     'createIcon': function(size) {
+                        let xicon = new Gio.ThemedIcon({name: 'tomboy'});
+                        return new St.Icon({icon_size: size,
+                                            gicon: xicon});
+                     }
+
+                   };
+        } else { 
+            return { 'id': resultId,
+                     'name': title,
+                     'createIcon': function(size) {
+                        let xicon = new Gio.ThemedIcon({name: 'gnote'});
+                        return new St.Icon({icon_size: size,
+                                            gicon: xicon});
+                     }
+
+                   };
+        }
     },
 
 
     /* display a note with search terms highlighted */
     activateResult: function(id, params) {
-        this._gnote.DisplayNoteWithSearchRemote(id.uri, id.search, function(reply,err) {});
+        this._noteControl.DisplayNoteWithSearchRemote(id.uri, id.search, function(reply,err) {});
     },
 
     /* start asynchronous search for terms */
@@ -101,7 +159,7 @@ GnoteSearchProvider.prototype = {
 
         this.startAsync();
 
-        this._gnote.SearchNotesRemote(searchString, false, Lang.bind(this,
+        this._noteControl.SearchNotesRemote(searchString, false, Lang.bind(this,
             function(result, err) {
                 if(result==null || result.length==null) {
                     return;
@@ -112,7 +170,7 @@ GnoteSearchProvider.prototype = {
 
                 for (let i = 0; i < searchCount; i++) {
                     let r = result[i]
-                    this._gnote.GetNoteTitleRemote(r, Lang.bind(this,
+                    this._noteControl.GetNoteTitleRemote(r, Lang.bind(this,
                         function(title, err) {
                             searchResults.push({
                                     'uri': r,
@@ -152,15 +210,15 @@ function init() {
 }
 
 function enable() {
-    if(gnoteSearchProvider==null) {
-        gnoteSearchProvider = new GnoteSearchProvider();
-        Main.overview.addSearchProvider(gnoteSearchProvider);
+    if(noteSearchProvider==null) {
+        noteSearchProvider = new NoteSearchProvider();
+        Main.overview.addSearchProvider(noteSearchProvider);
     }
 }
 
 function disable() {
-    if(gnoteSearchProvider!=null) {
-        Main.overview.removeSearchProvider(gnoteSearchProvider);
-        gnoteSearchProvider = null;
+    if(noteSearchProvider!=null) {
+        Main.overview.removeSearchProvider(noteSearchProvider);
+        noteSearchProvider = null;
     }
 }
