@@ -13,7 +13,9 @@ By default, this extension will use Gnote as the note application. To change
 the note application, use gsettings:
 
     gsettings set com.github.charkins.notesearch app Tomboy
+
 or
+
     gsettings set com.github.charkins.notesearch app Gnote
 
 To see which note application is currently configured:
