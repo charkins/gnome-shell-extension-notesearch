@@ -39,8 +39,8 @@ const GnoteRemoteControl = {
     name: 'org.gnome.Gnote.RemoteControl',
     methods: [
         {
-            name: 'DisplayNoteWithSearch',
-            inSignature: 'ss',
+            name: 'DisplayNote',
+            inSignature: 's',
             outSignature: 'b'
         },{
             name: 'SearchNotes',
@@ -58,8 +58,8 @@ const TomboyRemoteControl = {
     name: 'org.gnome.Tomboy.RemoteControl',
     methods: [
         {
-            name: 'DisplayNoteWithSearch',
-            inSignature: 'ss',
+            name: 'DisplayNote',
+            inSignature: 's',
             outSignature: 'b'
         },{
             name: 'SearchNotes',
@@ -85,15 +85,14 @@ function getSettings(schema) {
     return new Gio.Settings({ schema: schema });
 }
 
-function NoteSearchProvider() {
-    this._init();
-}
+const NoteSearchProvider = new Lang.Class({
+    Name: 'NoteSearchProvider',
+    Extends: Search.SearchProvider,
 
-NoteSearchProvider.prototype = {
-    __proto__: Search.SearchProvider.prototype,
 
     _init: function(name) {
-        Search.SearchProvider.prototype._init.call(this, _("NOTES"));
+        this.parent(_("NOTES"));
+        this.async = true;
         this._settings = getSettings(NOTESEARCH_SETTINGS_SCHEMA);
         let notesearch_app_changed = Lang.bind(this, function() {
             this._noteApp = this._settings.get_enum(NOTESEARCH_APP_KEY);
@@ -118,46 +117,54 @@ NoteSearchProvider.prototype = {
     },
 
     /* get the title and icon for a search result */
-    getResultMeta: function(resultId) {
-        let title = resultId.title;
-        if(!title) title = 'Note';
+    getResultMetasAsync: function(results, callback) {
+        callback(this.getResultMetas(results));
+    },
 
-        if (this._noteApp == NoteSearchApp.TOMBOY) {
-            return { 'id': resultId,
-                     'name': title,
-                     'createIcon': function(size) {
-                        let xicon = new Gio.ThemedIcon({name: 'tomboy'});
-                        return new St.Icon({icon_size: size,
-                                            gicon: xicon});
-                     }
+    getResultMetas: function(results) {
+        let resultMetas = [];
+        for(let i = 0; i < results.length ; i++) { 
+            let resultId = results[i];
+            let title = results[i]['title'];
+            if(!title) title = 'Note';
 
-                   };
-        } else { 
-            return { 'id': resultId,
-                     'name': title,
-                     'createIcon': function(size) {
-                        let xicon = new Gio.ThemedIcon({name: 'gnote'});
-                        return new St.Icon({icon_size: size,
-                                            gicon: xicon});
-                     }
+            if (this._noteApp == NoteSearchApp.TOMBOY) {
+                resultMetas.push({ 'id': resultId,
+                         'name': title,
+                         'createIcon': function(size) {
+                            let xicon = new Gio.ThemedIcon({name: 'tomboy'});
+                            return new St.Icon({icon_size: size,
+                                                gicon: xicon});
+                         }
+    
+                       });
+            } else { 
+                resultMetas.push({ 'id': resultId,
+                         'name': title,
+                         'createIcon': function(size) {
+                            let xicon = new Gio.ThemedIcon({name: 'gnote'});
+                            return new St.Icon({icon_size: size,
+                                                gicon: xicon});
+                         }
 
-                   };
+                       });
+            }
         }
+        
+        return resultMetas;
     },
 
 
     /* display a note with search terms highlighted */
-    activateResult: function(id, params) {
-        this._noteControl.DisplayNoteWithSearchRemote(id.uri, id.search, function(reply,err) {});
+    activateResult: function(id) {
+        this._noteControl.DisplayNoteRemote(id.uri, function(reply,err) {});
     },
 
     /* start asynchronous search for terms */
-    getInitialResultSet: function(terms) {
+    getInitialResultSetAsync: function(terms) {
         this._id = this._id + 1;
         let searchId = this._id;
         let searchString = terms.join(' ');
-
-        this.startAsync();
 
         this._noteControl.SearchNotesRemote(searchString, false, Lang.bind(this,
             function(result, err) {
@@ -180,7 +187,7 @@ NoteSearchProvider.prototype = {
 
                             /* once we have all results, post them if this is still the current search */
                             if(searchResults.length == searchCount && this._id == searchId) {
-                                this.addItems(searchResults);
+                                this.searchSystem.pushResults(this, searchResults);
                             }
                         }
                     ));
@@ -188,15 +195,13 @@ NoteSearchProvider.prototype = {
             }
         ), DBus.CALL_FLAG_START);
 
-        return [];
     },
 
     /* Gnote doesn't provide a way for subsearching results, so
      * start with a fresh search, cancelling any previous running
      * asynchronous search. */
-    getSubsearchResultSet: function(previousResults, terms) {
-        this.tryCancelAsync();
-        return this.getInitialResultSet(terms);
+    getSubsearchResultSetAsync: function(previousResults, terms) {
+        this.getInitialResultSetAsync(terms);
     },
 
     /* Cancel previous asynchronous search, called from tryCancelAsync(). */
@@ -204,7 +209,7 @@ NoteSearchProvider.prototype = {
         this._id = this._id + 1;
     }
 
-};
+});
 
 function init() {
 }
