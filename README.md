@@ -2,7 +2,7 @@ Note Search Provider
 =====================
 A gnome-shell extension which searches [Gnote][1] or [Tomboy][2] notes and
 provides them in your shell overview. This extension requires at least
-version 3.2 of gnome-shell (for asynchronous search provider support).
+version 3.4 of gnome-shell (for asynchronous search provider support).
 
 ### Installation
 * ./autogen.sh --prefix=/usr/local && make && sudo make install
@@ -33,8 +33,14 @@ line option for running Gnote in the background and will use it when
 activated via dbus. Alternatively, enable the tray icon until some form
 of background support is merged upstream.
 
+### Future
+Version 3.4 of gnome-shell now allows applications to provide search
+results by implementing a dbus interface. Ideally, gnote and tomboy
+would implement this interface directly, eliminating a need for this
+extension.
+
 ### License
-Copyright (c) 2011 Casey Harkins <charkins@pobox.com>
+Copyright (c) 2011-2012 Casey Harkins <charkins@pobox.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
