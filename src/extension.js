@@ -117,11 +117,7 @@ const NoteSearchProvider = new Lang.Class({
     },
 
     /* get the title and icon for a search result */
-    getResultMetasAsync: function(results, callback) {
-        callback(this.getResultMetas(results));
-    },
-
-    getResultMetas: function(results) {
+    getResultMetas: function(results, callback) {
         let resultMetas = [];
         for(let i = 0; i < results.length ; i++) { 
             let resultId = results[i];
@@ -151,9 +147,8 @@ const NoteSearchProvider = new Lang.Class({
             }
         }
         
-        return resultMetas;
+        callback(resultMetas);
     },
-
 
     /* display a note with search terms highlighted */
     activateResult: function(id) {
@@ -161,7 +156,7 @@ const NoteSearchProvider = new Lang.Class({
     },
 
     /* start asynchronous search for terms */
-    getInitialResultSetAsync: function(terms) {
+    getInitialResultSet: function(terms) {
         this._id = this._id + 1;
         let searchId = this._id;
         let searchString = terms.join(' ');
@@ -200,8 +195,8 @@ const NoteSearchProvider = new Lang.Class({
     /* Gnote doesn't provide a way for subsearching results, so
      * start with a fresh search, cancelling any previous running
      * asynchronous search. */
-    getSubsearchResultSetAsync: function(previousResults, terms) {
-        this.getInitialResultSetAsync(terms);
+    getSubsearchResultSet: function(previousResults, terms) {
+        this.getInitialResultSet(terms);
     },
 
     /* Cancel previous asynchronous search, called from tryCancelAsync(). */
