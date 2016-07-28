@@ -1,5 +1,10 @@
 Note Search Provider
 =====================
+
+Gnote has included a search provider for some time, rendering this
+extension obsolete.
+
+### Old Summary
 A gnome-shell extension which searches [Gnote][1] or [Tomboy][2] notes and
 provides them in your shell overview. This extension requires at least
 version 3.4 of gnome-shell (for asynchronous search provider support).
